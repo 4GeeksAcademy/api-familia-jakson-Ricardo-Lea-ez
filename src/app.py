@@ -30,13 +30,61 @@ def sitemap():
 
 
 @app.route('/members', methods=['GET'])
-def handle_hello():
-    # This is how you can use the Family datastructure by calling its methods
+def get_all_members():
     members = jackson_family.get_all_members()
-    response_body = {"hello": "world",
-                     "family": members}
-    return jsonify(response_body), 200
+    return jsonify(members), 200
 
+
+@app.route('/member/<int:member_id>', methods=['GET'])
+def get_member(member_id):
+    member = jackson_family.get_member(member_id)
+    if member:
+        return jsonify(member), 200
+    else:
+        return jsonify({"error": "Member not found"}), 404
+
+
+@app.route('/member', methods=['POST'])
+def add_member():
+    member_data = request.get_json()
+    
+    # Validate required fields
+    if not member_data:
+        return jsonify({"error": "No data provided"}), 400
+    
+    required_fields = ['first_name', 'age', 'lucky_numbers']
+    for field in required_fields:
+        if field not in member_data:
+            return jsonify({"error": f"Missing required field: {field}"}), 400
+    
+    # Validate data types
+    if not isinstance(member_data['first_name'], str):
+        return jsonify({"error": "first_name must be a string"}), 400
+    
+    if not isinstance(member_data['age'], int) or member_data['age'] <= 0:
+        return jsonify({"error": "age must be a positive integer"}), 400
+    
+    if not isinstance(member_data['lucky_numbers'], list):
+        return jsonify({"error": "lucky_numbers must be a list"}), 400
+    
+    # Check if ID already exists (if provided)
+    if 'id' in member_data:
+        existing_member = jackson_family.get_member(member_data['id'])
+        if existing_member:
+            return jsonify({"error": "Member ID already exists"}), 400
+    
+    new_member = jackson_family.add_member(member_data)
+    return jsonify(new_member), 200
+
+
+@app.route('/member/<int:member_id>', methods=['DELETE'])
+def delete_member(member_id):
+    member = jackson_family.get_member(member_id)
+    if not member:
+        return jsonify({"error": "Member not found"}), 404
+    
+    jackson_family.delete_member(member_id)
+    return jsonify({"done": True}), 200
 
 
 # This only runs if `$ python src/app.py` is executed
